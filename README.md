@@ -1,31 +1,31 @@
-# MLOps on Amazon SageMaker — starter blueprint
+# AWS EKS Platform on Terraform
 
-Portfolio sample of an end-to-end SageMaker ML workflow: a training script
-(PyTorch), a SageMaker Pipeline definition, and a deployment sketch for a
-real-time endpoint behind autoscaling. Patterns I use on ML platforms:
-reproducible training jobs, model registry promotion, and infrastructure for
-both batch and online inference.
+Reference architecture showing how I design production-grade Amazon EKS
+platforms with Terraform: VPC, managed node groups, IAM Roles for Service
+Accounts (IRSA), and cluster add-ons (CoreDNS, VPC-CNI, EBS CSI, metrics-server).
+
+This is a portfolio sample of the platform-engineering patterns I use daily —
+remote-state backend, environment overlays, and add-on pinning. The code is
+meant as a starting point, not a copy-paste production module.
 
 ## Layout
 
-- `training/train.py` — PyTorch training script (SageMaker Script Mode)
-- `pipeline/pipeline.py` — SageMaker Pipelines: processing, training,
-  evaluation, register, deploy (conditional on accuracy)
-- `deployment/endpoint_config.py` — real-time endpoint + autoscaling policy
+- `main.tf` — EKS cluster, node groups, add-ons
+- `variables.tf` — inputs (cluster name, region, node sizing)
+- `outputs.tf` — cluster endpoint, OIDC issuer, security groups
+- `network.tf` — VPC + subnets (private for nodes, public for the API if desired)
 
-## Run (AWS)
+## Usage
 
 ```bash
-# Train
-python training/train.py --epochs 5
-
-# Build + run the pipeline
-python pipeline/pipeline.py
+terraform init
+terraform plan -var-file=envs/dev.tfvars
+terraform apply -var-file=envs/dev.tfvars
 ```
 
 ## Patterns demonstrated
 
-- Script-mode training jobs with explicit hyperparameters and metrics
-- Pipeline steps with caching, so re-runs skip unchanged stages
-- Model registry with approval workflow before endpoint deployment
-- Endpoint autoscaling on `SageMakerVariantInvocationsPerInstance`
+- Private node subnets with NAT egress; control-plane endpoint private-first
+- IRSA via the cluster OIDC provider for workload identity
+- Managed add-ons pinned to compatible versions
+- Launch templates with IMDSv2 enforced and EBS encryption on
